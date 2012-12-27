@@ -32,6 +32,28 @@ USAGE
                         register, or easily update the system clipboard
                         without having to repeat the register on every yank.
 
+                        Subsequent blockwise yanks are merged as blocks to the
+                        right:
+                            ab -> ab12
+                            cd    cd34
+                        instead of added below the existing text blocks:
+                            ab -> ab
+                            cd    cd
+                                  12
+                                  34
+
+["x]gly{motion}         Yank {motion} text as a new line into register x.
+{Visual}["x]gly         Yank the selected text as a new line into register x.
+                        When repeated, the text will be automatically
+                        separated from the existing contents by a newline
+                        character. This is useful for collecting individual
+                        words (without surrounding whitespace), or other
+                        phrases when you intend to work on them as separate
+                        lines.
+
+                        You can also use this mapping to avoid the special
+                        RepeatableYank-block-merge behavior.
+
 EXAMPLE
 Start by yanking "an entire line" into register a:
     "agyy
@@ -67,3 +89,18 @@ without starting over, just specify the uppercase register name:
     another line
     word1 word2
     +addition after register switch
+
+This is an example of gly:
+Start by yanking "word1" into register a:
+    "aglyi"
+   word1
+
+Add "word2" and "word3", but on separate lines, so that the register contents
+don't turn into a mess of "word1word2word3":
+    glyi"
+    word1
+    word2
+    w.
+    word1
+    word2
+    word3

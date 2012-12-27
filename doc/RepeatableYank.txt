@@ -46,6 +46,28 @@ USAGE							*RepeatableYank-usage*
 			Therefore, you can gradually build up text in a named
 			register, or easily update the system clipboard
 			without having to repeat the register on every yank.
+						  *RepeatableYank-block-merge*
+			Subsequent blockwise yanks are merged as blocks to the
+			right:
+			    ab -> ab12 ~
+			    cd    cd34 ~
+			instead of added below the existing text blocks:
+			    ab -> ab ~
+			    cd    cd ~
+				  12 ~
+				  34 ~
+
+["x]gly{motion}		Yank {motion} text as a new line into register x.
+{Visual}["x]gly		Yank the selected text as a new line into register x.
+			When repeated, the text will be automatically
+			separated from the existing contents by a newline
+			character. This is useful for collecting individual
+			words (without surrounding whitespace), or other
+			phrases when you intend to work on them as separate
+			lines.
+
+			You can also use this mapping to avoid the special
+			|RepeatableYank-block-merge| behavior.
 
 EXAMPLE						      *RepeatableYank-example*
 
@@ -85,6 +107,22 @@ without starting over, just specify the uppercase register name: >
     word1 word2 ~
     +addition after register switch ~
 
+
+This is an example of |gly|:			  *RepeatableYank-example-gly*
+Start by yanking "word1" into register a: >
+    "aglyi"
+<   word1 ~
+
+Add "word2" and "word3", but on separate lines, so that the register contents
+don't turn into a mess of "word1word2word3":
+    glyi"
+    word1 ~
+    word2 ~
+    w.
+    word1 ~
+    word2 ~
+    word3 ~
+
 ==============================================================================
 INSTALLATION					 *RepeatableYank-installation*
 
@@ -114,6 +152,20 @@ you use |gy| for the first time without explicitly specifying a register. To
 change this default to another register (e.g. the clipboard), use: >
     let g:RepeatableYank_DefaultRegister = '+'
 <
+							*RepeatableYank-remap*
+If you want to use different mappings, map your keys to the
+<Plug>RepeatableYank... mapping targets _before_ sourcing the script (e.g. in
+your |vimrc|): >
+    nmap <Leader>y  <Plug>RepeatableYankOperator
+    nmap <Leader>yy <Plug>RepeatableYankLine
+    xmap <Leader>y  <Plug>RepeatableYankVisual
+    nmap <Leader>ly <Plug>RepeatableYankAsLineOperator
+    xmap <Leader>ly <Plug>RepeatableYankAsLineVisual
+<
+If you don't need the gly mappings introduced in version 1.10: >
+    nmap <Plug>DisableRepeatableYankAsLineOperator <Plug>RepeatableYankAsLineOperator
+    xmap <Plug>DisableRepeatableYankAsLineVisual   <Plug>RepeatableYankAsLineVisual
+<
 ==============================================================================
 LIMITATIONS					  *RepeatableYank-limitations*
 
@@ -125,6 +177,11 @@ IDEAS							*RepeatableYank-ideas*
 
 ==============================================================================
 HISTORY						      *RepeatableYank-history*
+
+1.10	27-Dec-2012
+- ENH: Add alternative gly mapping to yank as new line.
+- FIX: When appending a block consisting of a single line, the merge doesn't
+  capture the new block at all.
 
 1.00	24-Sep-2012
 First published version.

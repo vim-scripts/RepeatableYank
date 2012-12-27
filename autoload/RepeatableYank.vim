@@ -13,6 +13,17 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.10.009	27-Dec-2012	Need special case for turning blockwise register
+"				into linewise to avoid that _two_ newlines are
+"				appended.
+"				FIX: When appending a block consisting of a
+"				single line, the merge doesn't capture the new
+"				block at all. With a single line, the cursor
+"				position after the initial paste is different.
+"				Explicitly move the cursor to column 1 via 0
+"				first.
+"   1.10.008	26-Dec-2012	ENH: Add alternative gly mapping to yank as new
+"				line.
 "   1.00.007	06-Dec-2011	Retire visualrepeat#set_also(); use
 "				visualrepeat#set() everywhere.
 "	006	07-Nov-2011	ENH: echo number of yanked lines, total lines
@@ -52,21 +63,39 @@ endif
 function! RepeatableYank#SetRegister()
     let s:register = v:register
 endfunction
-function! s:AdaptRegtype( useRegister, yanktype )
-    if a:yanktype ==# 'visual'
-	let l:yanktype = visualmode()
+function! s:AdaptRegtype( useRegister, yanktype, isAsLine )
+    if a:isAsLine
+	if getregtype(a:useRegister) !=# 'V'
+	    if getregtype(a:useRegister) ==# 'v'
+		" This ensures a trailing newline character.
+		call setreg(a:useRegister, '', 'aV')
+	    else
+		" XXX: Above appends two newline characters; probably, because
+		" the change away from blockwise mode inserts the previously
+		" implicit trailing newline, making the register characterwise;
+		" then, the switch to linewise appends another newline.
+		" Work around this by overwriting the contents with itself
+		" instead of appending nothing.
+		let l:directRegister = tolower(a:useRegister)   " Cannot override via uppercase register name.
+		call setreg(l:directRegister, getreg(l:directRegister), 'V')
+	    endif
+	endif
     else
-	" Adapt 'operatorfunc' string arguments to visualmode types.
-	let l:yanktype = {'char': 'v', 'line': 'V', 'block': "\<C-v>"}[a:yanktype]
-    endif
+	if a:yanktype ==# 'visual'
+	    let l:yanktype = visualmode()
+	else
+	    " Adapt 'operatorfunc' string arguments to visualmode types.
+	    let l:yanktype = {'char': 'v', 'line': 'V', 'block': "\<C-v>"}[a:yanktype]
+	endif
 
-    let l:regtype = getregtype(a:useRegister)[0]
+	let l:regtype = getregtype(a:useRegister)[0]
 
-    if l:regtype ==# 'V' && l:yanktype !=# 'V'
-	" Once the regtype is 'V', subsequent characterwise yanks will be
-	" linewise, too. Instead, we want them appended characterwise, after the
-	" newline left by the previous linewise yank.
-	call setreg(a:useRegister, '', 'av')
+	if l:regtype ==# 'V' && l:yanktype !=# 'V'
+	    " Once the regtype is 'V', subsequent characterwise yanks will be
+	    " linewise, too. Instead, we want them appended characterwise, after the
+	    " newline left by the previous linewise yank.
+	    call setreg(a:useRegister, '', 'av')
+	endif
     endif
 endfunction
 function! s:BlockAugmentedRegister( targetContent, content, type )
@@ -99,7 +128,7 @@ function! s:BlockwiseMergeYank( useRegister, yankCmd )
     let l:save_reg = getreg(a:useRegister)
     let l:save_regtype = getregtype(a:useRegister)
 
-    call s:AdaptRegtype(a:useRegister, 'visual')
+    call s:AdaptRegtype(a:useRegister, 'visual', 0)
 
     " When appending a blockwise selection to a blockwise register, we
     " want the individual rows merged (so the new block is appended to
@@ -113,17 +142,16 @@ function! s:BlockwiseMergeYank( useRegister, yankCmd )
     " by pasting both together in a scratch buffer.
     call ingobuffer#CallInTempBuffer(function('RepeatableYank#TempMerge'), [l:directRegister, l:save_reg, l:save_regtype], 1)
 endfunction
-function! RepeatableYank#TempMerge(directRegister, save_reg, save_regtype)
+function! RepeatableYank#TempMerge( directRegister, save_reg, save_regtype )
     " First paste the new block, then paste the old register contents to
     " the left. Pasting to the right would be complicated when there's
     " an uneven right border; pasting to the left must account for
     " differences in the number of rows.
     execute 'silent normal! "' . a:directRegister . 'P'
-
     call setreg(a:directRegister, s:BlockAugmentedRegister(getreg(a:directRegister), a:save_reg, a:save_regtype), "\<C-v>")
-    execute 'normal! "' . a:directRegister . 'P'
+    execute 'normal! 0"' . a:directRegister . 'P'
 
-    execute "silent normal! \<C-v>G$\"" . a:directRegister . 'y'
+    execute "silent normal! 0\<C-v>G$\"" . a:directRegister . 'y'
 endfunction
 function! s:YankMessage( visualmode, yankedLines, content )
     if a:visualmode ==# 'v' && a:yankedLines == 1
@@ -145,7 +173,7 @@ function! s:YankMessage( visualmode, yankedLines, content )
 
     return l:message
 endfunction
-function! RepeatableYank#Operator( type, ... )
+function! s:Operator( isAsLine, type, ... )
     let l:isRepetition = 0
     if s:register ==# '"'
 	let l:isRepetition = 1
@@ -177,14 +205,14 @@ function! RepeatableYank#Operator( type, ... )
     endif
 
     if a:type ==# 'visual'
-	if l:isRepetition && visualmode() ==# "\<C-v>"
+	if l:isRepetition && visualmode() ==# "\<C-v>" && ! a:isAsLine
 	    call s:BlockwiseMergeYank(l:useRegister, l:yankCmd)
 	else
-	    call s:AdaptRegtype(l:useRegister, a:type)
+	    call s:AdaptRegtype(l:useRegister, a:type, a:isAsLine)
 	    execute 'silent normal! gv' . l:yankCmd
 	endif
     else
-	call s:AdaptRegtype(l:useRegister, a:type)
+	call s:AdaptRegtype(l:useRegister, a:type, a:isAsLine)
 
 	" Note: Need to use an "inclusive" selection to make `] include the
 	" last moved-over character.
@@ -204,11 +232,22 @@ function! RepeatableYank#Operator( type, ... )
     else
 	silent! call repeat#invalidate()
     endif
-    silent! call visualrepeat#set("\<Plug>RepeatableYankVisual")
+    silent! call visualrepeat#set(a:isAsLine ? "\<Plug>RepeatableYankAsLineVisual" : "\<Plug>RepeatableYankVisual")
+endfunction
+function! RepeatableYank#Operator( type, ... )
+    return call('s:Operator', [0, a:type] + a:000)
+endfunction
+function! RepeatableYank#OperatorAsLine( type, ... )
+    return call('s:Operator', [1, a:type] + a:000)
 endfunction
 function! RepeatableYank#OperatorExpression()
     call RepeatableYank#SetRegister()
     set opfunc=RepeatableYank#Operator
+    return 'g@'
+endfunction
+function! RepeatableYank#OperatorAsLineExpression()
+    call RepeatableYank#SetRegister()
+    set opfunc=RepeatableYank#OperatorAsLine
     return 'g@'
 endfunction
 

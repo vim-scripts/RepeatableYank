@@ -10,6 +10,8 @@
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.10.005	26-Dec-2012	ENH: Add alternative gly mapping to yank as new
+"				line.
 "   1.00.004	22-Oct-2011	Pull <SID>Reselect into the main mapping (the
 "				final <Esc> is important to "seal" the visual
 "				selection and make it recallable via gv),
@@ -47,13 +49,15 @@ endif
 
 " This mapping repeats naturally, because it just sets global things, and Vim is
 " able to repeat the g@ on its own.
-nnoremap <expr> <Plug>RepeatableYankOperator RepeatableYank#OperatorExpression()
+nnoremap <expr> <Plug>RepeatableYankOperator       RepeatableYank#OperatorExpression()
+nnoremap <expr> <Plug>RepeatableYankAsLineOperator RepeatableYank#OperatorAsLineExpression()
 " This mapping needs repeat.vim to be repeatable, because it contains of
 " multiple steps (visual selection + yank command inside
 " RepeatableYank#Operator).
-nnoremap <silent> <Plug>RepeatableYankLine     :<C-u>call RepeatableYank#SetRegister()<Bar>execute 'normal! V' . v:count1 . "_\<lt>Esc>"<Bar>call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankLine")<CR>
+nnoremap <silent> <Plug>RepeatableYankLine         :<C-u>call RepeatableYank#SetRegister()<Bar>execute 'normal! V' . v:count1 . "_\<lt>Esc>"<Bar>call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankLine")<CR>
 " Repeat not defined in visual mode, but enabled through visualrepeat.vim.
-vnoremap <silent> <Plug>RepeatableYankVisual :<C-u>call RepeatableYank#SetRegister()<Bar>call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankVisual")<CR>
+vnoremap <silent> <Plug>RepeatableYankVisual       :<C-u>call RepeatableYank#SetRegister()<Bar>call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankVisual")<CR>
+vnoremap <silent> <Plug>RepeatableYankAsLineVisual :<C-u>call RepeatableYank#SetRegister()<Bar>call RepeatableYank#OperatorAsLine('visual', "\<lt>Plug>RepeatableYankAsLineVisual")<CR>
 
 " A normal-mode repeat of the visual mapping is triggered by repeat.vim. It
 " establishes a new selection at the cursor position, of the same mode and size
@@ -69,6 +73,10 @@ nnoremap <silent> <Plug>RepeatableYankVisual
 \ :<C-u>call RepeatableYank#SetRegister()<Bar>
 \execute 'normal!' v:count1 . 'v' . (visualmode() !=# 'V' && &selection ==# 'exclusive' ? ' ' : ''). "\<lt>Esc>"<Bar>
 \call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankVisual")<CR>
+nnoremap <silent> <Plug>RepeatableYankAsLineVisual
+\ :<C-u>call RepeatableYank#SetRegister()<Bar>
+\execute 'normal!' v:count1 . 'v' . (visualmode() !=# 'V' && &selection ==# 'exclusive' ? ' ' : ''). "\<lt>Esc>"<Bar>
+\call RepeatableYank#OperatorAsLine('visual', "\<lt>Plug>RepeatableYankAsLineVisual")<CR>
 
 if ! hasmapto('<Plug>RepeatableYankOperator', 'n')
     nmap gy <Plug>RepeatableYankOperator
@@ -78,6 +86,12 @@ if ! hasmapto('<Plug>RepeatableYankLine', 'n')
 endif
 if ! hasmapto('<Plug>RepeatableYankVisual', 'x')
     xmap gy <Plug>RepeatableYankVisual
+endif
+if ! hasmapto('<Plug>RepeatableYankAsLineOperator', 'n')
+    nmap gly <Plug>RepeatableYankAsLineOperator
+endif
+if ! hasmapto('<Plug>RepeatableYankAsLineVisual', 'x')
+    xmap gly <Plug>RepeatableYankAsLineVisual
 endif
 
 let &cpo = s:save_cpo

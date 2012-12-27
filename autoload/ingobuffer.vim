@@ -1,5 +1,8 @@
 " ingobuffer.vim: Custom buffer functions.
 "
+" DEPENDENCIES:
+"   - ingofile.vim autoload script (for ingobuffer#MakeScratchBuffer())
+"
 " Copyright: (C) 2009-2012 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
