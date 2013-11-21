@@ -4,12 +4,18 @@
 "   - Requires Vim 7.0 or higher.
 "   - RepeatableYank.vim autoload script.
 "
-" Copyright: (C) 2011-2012 Ingo Karkat
+" Copyright: (C) 2011-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.20.006	18-Apr-2013	Use optional visualrepeat#reapply#VisualMode()
+"				for normal mode repeat of a visual mapping.
+"				When supplying a [count] on such repeat of a
+"				previous linewise selection, now [count] number
+"				of lines instead of [count] times the original
+"				selection is used.
 "   1.10.005	26-Dec-2012	ENH: Add alternative gly mapping to yank as new
 "				line.
 "   1.00.004	22-Oct-2011	Pull <SID>Reselect into the main mapping (the
@@ -54,28 +60,35 @@ nnoremap <expr> <Plug>RepeatableYankAsLineOperator RepeatableYank#OperatorAsLine
 " This mapping needs repeat.vim to be repeatable, because it contains of
 " multiple steps (visual selection + yank command inside
 " RepeatableYank#Operator).
-nnoremap <silent> <Plug>RepeatableYankLine         :<C-u>call RepeatableYank#SetRegister()<Bar>execute 'normal! V' . v:count1 . "_\<lt>Esc>"<Bar>call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankLine")<CR>
+nnoremap <silent> <Plug>RepeatableYankLine
+\ :<C-u>call RepeatableYank#SetRegister()<Bar>
+\execute 'normal! V' . v:count1 . "_\<lt>Esc>"<Bar>
+\call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankLine")<CR>
 " Repeat not defined in visual mode, but enabled through visualrepeat.vim.
-vnoremap <silent> <Plug>RepeatableYankVisual       :<C-u>call RepeatableYank#SetRegister()<Bar>call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankVisual")<CR>
-vnoremap <silent> <Plug>RepeatableYankAsLineVisual :<C-u>call RepeatableYank#SetRegister()<Bar>call RepeatableYank#OperatorAsLine('visual', "\<lt>Plug>RepeatableYankAsLineVisual")<CR>
+vnoremap <silent> <Plug>RepeatableYankVisual
+\ :<C-u>call RepeatableYank#SetRegister()<Bar>
+\call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankVisual")<CR>
+vnoremap <silent> <Plug>RepeatableYankAsLineVisual
+\ :<C-u>call RepeatableYank#SetRegister()<Bar>
+\call RepeatableYank#OperatorAsLine('visual', "\<lt>Plug>RepeatableYankAsLineVisual")<CR>
 
 " A normal-mode repeat of the visual mapping is triggered by repeat.vim. It
 " establishes a new selection at the cursor position, of the same mode and size
 " as the last selection.
-"   If [count] is given, the size is multiplied accordingly. This has the side
-"   effect that a repeat with [count] will persist the expanded size, which is
-"   different from what the normal-mode repeat does (it keeps the scope of the
-"   original command).
+"   If [count] is given, that number of lines is used / the original size is
+"   multiplied accordingly. This has the side effect that a repeat with [count]
+"   will persist the expanded size, which is different from what the normal-mode
+"   repeat does (it keeps the scope of the original command).
 " On repetition, v:register will contain the unnamed register (because we do not
 " use repeat#setreg(), and therefore the used register isn't repeated), and that
 " will trigger the desired append to s:activeRegister.
 nnoremap <silent> <Plug>RepeatableYankVisual
 \ :<C-u>call RepeatableYank#SetRegister()<Bar>
-\execute 'normal!' v:count1 . 'v' . (visualmode() !=# 'V' && &selection ==# 'exclusive' ? ' ' : ''). "\<lt>Esc>"<Bar>
+\execute 'normal!' RepeatableYank#VisualMode()<Bar>
 \call RepeatableYank#Operator('visual', "\<lt>Plug>RepeatableYankVisual")<CR>
 nnoremap <silent> <Plug>RepeatableYankAsLineVisual
 \ :<C-u>call RepeatableYank#SetRegister()<Bar>
-\execute 'normal!' v:count1 . 'v' . (visualmode() !=# 'V' && &selection ==# 'exclusive' ? ' ' : ''). "\<lt>Esc>"<Bar>
+\execute 'normal!' RepeatableYank#VisualMode()<Bar>
 \call RepeatableYank#OperatorAsLine('visual', "\<lt>Plug>RepeatableYankAsLineVisual")<CR>
 
 if ! hasmapto('<Plug>RepeatableYankOperator', 'n')

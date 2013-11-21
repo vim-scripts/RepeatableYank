@@ -137,8 +137,10 @@ To uninstall, use the |:RmVimball| command.
 DEPENDENCIES					 *RepeatableYank-dependencies*
 
 - Requires Vim 7.0 or higher.
+- Requires the |ingo-library.vim| plugin (vimscript #4433), version 1.008 or
+  higher.
 - repeat.vim (vimscript #2136) plugin (optional).
-- visualrepeat.vim (vimscript #3848) plugin (optional).
+- visualrepeat.vim (vimscript #3848) plugin (version 2.00 or higher; optional)
 
 ==============================================================================
 CONFIGURATION					*RepeatableYank-configuration*
@@ -178,6 +180,15 @@ IDEAS							*RepeatableYank-ideas*
 ==============================================================================
 HISTORY						      *RepeatableYank-history*
 
+1.20	21-Nov-2013
+- Use optional visualrepeat#reapply#VisualMode() for normal mode repeat of a
+  visual mapping. When supplying a [count] on such repeat of a previous
+  linewise selection, now [count] number of lines instead of [count] times the
+  original selection is used.
+- Avoid changing the jumplist.
+- Add dependency to ingo-library (vimscript #4433). *** You need to separately
+  install ingo-library (vimscript #4433) version 1.008 (or higher)! ***
+
 1.10	27-Dec-2012
 - ENH: Add alternative gly mapping to yank as new line.
 - FIX: When appending a block consisting of a single line, the merge doesn't
@@ -190,8 +201,8 @@ First published version.
 Started development.
 
 ==============================================================================
-Copyright: (C) 2011-2012 Ingo Karkat
-The VIM LICENSE applies to this script; see |copyright|.
+Copyright: (C) 2011-2013 Ingo Karkat
+The VIM LICENSE applies to this plugin; see |copyright|.
 
 Maintainer:	Ingo Karkat <ingo@karkat.de>
 ==============================================================================

@@ -1,18 +1,25 @@
 " RepeatableYank.vim: Repeatable appending yank to a named register.
 "
 " DEPENDENCIES:
-"   - ingobuffer.vim autoload script.
-"   - repeat.vim (vimscript #2136) autoload script (optional).
-"   - visualrepeat.vim (vimscript #3848) autoload script (optional).
-"   - EchoWithoutScrolling.vim autoload script (only for Vim 7.0 - 7.2 for
-"     strdisplaywidth() emulation)
+"   - ingo/compat.vim autoload script
+"   - ingo/buffer/temp.vim autoload script
+"   - repeat.vim (vimscript #2136) autoload script (optional)
+"   - visualrepeat.vim (vimscript #3848) autoload script (optional)
+"   - visualrepeat/reapply.vim autoload script (optional)
 "
-" Copyright: (C) 2011-2012 Ingo Karkat
+" Copyright: (C) 2011-2013 Ingo Karkat
 "   The VIM LICENSE applies to this script; see ':help copyright'.
 "
 " Maintainer:	Ingo Karkat <ingo@karkat.de>
 "
 " REVISION	DATE		REMARKS
+"   1.20.013	11-Jun-2013	Move ingobuffer#CallInTempBuffer() to
+"				ingo#buffer#temp#Call().
+"   1.20.012	18-Apr-2013	Add RepeatableYank#VisualMode() wrapper around
+"				visualrepeat#reapply#VisualMode().
+"   1.11.011	04-Apr-2013	Use ingo/compat.vim for strchars() and
+"				strdisplaywidth().
+"   1.11.010	21-Mar-2013	Avoid changing the jumplist.
 "   1.10.009	27-Dec-2012	Need special case for turning blockwise register
 "				into linewise to avoid that _two_ newlines are
 "				appended.
@@ -49,16 +56,6 @@
 "				unconditionally to avoid inserting an additional
 "				empty line when doing linewise-linewise yanks.
 "	001	12-Sep-2011	file creation
-
-if exists('*strchars')
-function! s:strchars( expr )
-    return strchars(a:expr)
-endfunction
-else
-function! s:strchars( expr )
-    return len(split(a:expr, '\zs'))
-endfunction
-endif
 
 function! RepeatableYank#SetRegister()
     let s:register = v:register
@@ -112,10 +109,7 @@ function! s:BlockAugmentedRegister( targetContent, content, type )
 	let l:blockWidth = max(
 	\   map(
 	\	split(a:content, "\n"),
-	\	(exists('*strdisplaywidth') ?
-	\	    'strdisplaywidth(v:val)' :
-	\	    'EchoWithoutScrolling#DetermineVirtColNum(v:val)'
-	\	)
+	\	'ingo#compat#strdisplaywidth(v:val)'
 	\   )
 	\)
     endif
@@ -140,7 +134,7 @@ function! s:BlockwiseMergeYank( useRegister, yankCmd )
 
     " Merge the old, saved blockwise register contents with the new ones
     " by pasting both together in a scratch buffer.
-    call ingobuffer#CallInTempBuffer(function('RepeatableYank#TempMerge'), [l:directRegister, l:save_reg, l:save_regtype], 1)
+    call ingo#buffer#temp#Call(function('RepeatableYank#TempMerge'), [l:directRegister, l:save_reg, l:save_regtype], 1)
 endfunction
 function! RepeatableYank#TempMerge( directRegister, save_reg, save_regtype )
     " First paste the new block, then paste the old register contents to
@@ -164,7 +158,7 @@ function! s:YankMessage( visualmode, yankedLines, content )
     endif
     let l:lineCnt = (a:content =~# '\n' ? len(split(a:content, "\n")) : 0)
     if l:lineCnt == 0
-	let l:message .= printf('; %d characters total', s:strchars(a:content))
+	let l:message .= printf('; %d characters total', ingo#compat#strchars(a:content))
     else
 	let l:message .= printf('; %d line%s total', l:lineCnt, (l:lineCnt == 1 ? '' : 's'))
     endif
@@ -219,7 +213,7 @@ function! s:Operator( isAsLine, type, ... )
 	let l:save_selection = &selection
 	set selection=inclusive
 	try
-	    execute 'silent normal! `[' . (a:type ==# 'line' ? 'V' : 'v') . '`]' . l:yankCmd
+	    execute 'silent normal! g`[' . (a:type ==# 'line' ? 'V' : 'v') . 'g`]' . l:yankCmd
 	finally
 	    let &selection = l:save_selection
 	endtry
@@ -249,6 +243,12 @@ function! RepeatableYank#OperatorAsLineExpression()
     call RepeatableYank#SetRegister()
     set opfunc=RepeatableYank#OperatorAsLine
     return 'g@'
+endfunction
+
+function! RepeatableYank#VisualMode()
+    let l:keys = "1v\<Esc>"
+    silent! let l:keys = visualrepeat#reapply#VisualMode(0)
+    return l:keys
 endfunction
 
 " vim: set ts=8 sts=4 sw=4 noexpandtab ff=unix fdm=syntax :
